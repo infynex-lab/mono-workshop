@@ -1,0 +1,21 @@
+services:
+  apache:                       # Apache + mod_mono  -> http://localhost:8080
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: apache
+      args:
+        TARGET_FRAMEWORK: ${TARGET_FRAMEWORK:-}
+    image: webforms-mono:apache
+    ports: ["8080:80"]
+
+  xsp:                          # standalone xsp4    -> http://localhost:8081  (docker compose --profile debug up xsp)
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: xsp
+      args:
+        TARGET_FRAMEWORK: ${TARGET_FRAMEWORK:-}
+    image: webforms-mono:xsp
+    ports: ["8081:80"]
+    profiles: ["debug"]

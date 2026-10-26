@@ -1,0 +1,9 @@
+.git/
+.github/
+artifacts/
+packages/
+.tools/
+**/bin/
+**/obj/
+tests/
+*.md

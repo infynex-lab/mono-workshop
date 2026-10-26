@@ -1,0 +1,124 @@
+name: build-test-publish
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      target_framework:
+        description: "Framework to compile against (v4.6.2, v4.7.2, v4.8 ... empty = csproj value)"
+        required: false
+        default: ""
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+  TARGET_FRAMEWORK: ${{ github.event.inputs.target_framework }}
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [apache, xsp]       # apache = Apache + mod_mono (goal) ; xsp = standalone Mono server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      # 1) NuGet restore + msbuild; export ONLY the compiled output (DLLs + site files)
+      - name: Build binaries (NuGet restore + msbuild)
+        if: matrix.target == 'apache'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: artifacts
+          outputs: type=local,dest=artifacts
+          build-args: |
+            TARGET_FRAMEWORK=${{ env.TARGET_FRAMEWORK }}
+          cache-from: type=gha,scope=build
+          cache-to: type=gha,mode=max,scope=build
+          # Private NuGet feed: define repo secrets and uncomment (see nuget.config)
+          # secrets: |
+          #   feed_user=${{ secrets.FEED_USER }}
+          #   feed_pass=${{ secrets.FEED_PASS }}
+
+      - name: Show build manifest
+        if: matrix.target == 'apache'
+        run: cat artifacts/manifest.txt
+
+      - name: Upload binaries (webforms/, mvc/, manifest.txt)
+        if: matrix.target == 'apache'
+        uses: actions/upload-artifact@v4
+        with:
+          name: webforms-mvc-binaries
+          path: artifacts/
+
+      # 2) Runtime image
+      - name: Build runtime image (${{ matrix.target }})
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: ${{ matrix.target }}
+          load: true
+          tags: webforms-mono:${{ matrix.target }}
+          build-args: |
+            TARGET_FRAMEWORK=${{ env.TARGET_FRAMEWORK }}
+          cache-from: type=gha,scope=build
+          cache-to: type=gha,mode=max,scope=build
+
+      # 3) Run + test
+      - name: Start container
+        run: docker run -d --name app -p 8080:80 webforms-mono:${{ matrix.target }}
+
+      - name: Smoke tests (Web Forms + MVC + JSON API)
+        env:
+          CHECK_LANDING: ${{ matrix.target == 'apache' && '1' || '0' }}
+        run: tests/smoke.sh http://localhost:8080
+
+      - name: Container logs (on failure)
+        if: failure()
+        run: docker logs app
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f app
+
+  publish:
+    # Push the Apache + mod_mono image to GitHub Container Registry once tests pass (main / tags only)
+    needs: build-test
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: apache
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            TARGET_FRAMEWORK=${{ env.TARGET_FRAMEWORK }}
+          cache-from: type=gha,scope=build

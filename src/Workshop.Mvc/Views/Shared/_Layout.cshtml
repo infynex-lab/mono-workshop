@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewBag.Title - Workshop MVC</title>
+    <link href="@Url.Content("~/Content/Site.css")" rel="stylesheet" />
+</head>
+<body>
+    <h1>Classic ASP.NET MVC on Linux</h1>
+    <p class="nav">
+        @Html.ActionLink("Home", "Index", "Home") |
+        @Html.ActionLink("Products", "Index", "Products") |
+        <a href="@Url.Content("~/api/health")">/api/health</a> |
+        <a href="@Url.Content("~/api/products")">/api/products</a>
+    </p>
+    @RenderBody()
+</body>
+</html>

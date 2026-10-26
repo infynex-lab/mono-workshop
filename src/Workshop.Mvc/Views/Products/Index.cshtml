@@ -1,0 +1,21 @@
+@model System.Collections.Generic.IEnumerable<Workshop.Core.Models.Product>
+@{
+    ViewBag.Title = "Products";
+}
+<h2>Products</h2>
+<table>
+    <tr><th>ID</th><th>Name</th><th>Price</th></tr>
+    @foreach (var p in Model)
+    {
+        <tr><td>@p.Id</td><td>@p.Name</td><td>@p.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)</td></tr>
+    }
+</table>
+
+<h2>Add product</h2>
+@using (Html.BeginForm("Create", "Products", FormMethod.Post))
+{
+    <label>Name: <input type="text" name="name" /></label>
+    <label>Price: <input type="text" name="price" size="8" /></label>
+    <input type="submit" value="Add" />
+}
+<p>@ViewBag.Message</p>

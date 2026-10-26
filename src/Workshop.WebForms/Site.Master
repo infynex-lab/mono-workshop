@@ -1,0 +1,20 @@
+<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Site.Master.cs" Inherits="Workshop.WebForms.SiteMaster" %>
+<!DOCTYPE html>
+<html>
+<head runat="server">
+    <title>Workshop - Web Forms</title>
+    <link href="~/Content/Site.css" rel="stylesheet" runat="server" />
+</head>
+<body>
+<form id="form1" runat="server">
+    <h1>Classic Web Forms on Linux</h1>
+    <p class="nav">
+        <a runat="server" href="~/Default.aspx">Home</a> |
+        <a runat="server" href="~/Products.aspx">Products</a> |
+        <a runat="server" href="~/api/health">/api/health</a> |
+        <a runat="server" href="~/api/products">/api/products</a>
+    </p>
+    <asp:ContentPlaceHolder ID="MainContent" runat="server" />
+</form>
+</body>
+</html>
