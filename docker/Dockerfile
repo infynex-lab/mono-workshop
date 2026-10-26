@@ -25,9 +25,12 @@ ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 ENV SSL_CERT_DIR=/etc/ssl/certs
 RUN printf 'deb http://archive.debian.org/debian buster main\ndeb http://archive.debian.org/debian-security buster/updates main\n' > /etc/apt/sources.list \
  && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99archive \
- && apt-get update && apt-get install -y --no-install-recommends msbuild && rm -rf /var/lib/apt/lists/* || true
-RUN curl -fsSL "https://dist.nuget.org/win-x86-commandline/${NUGET_VERSION}/nuget.exe" -o /usr/local/bin/nuget.exe \
- && chmod +x /usr/local/bin/nuget.exe
+ && apt-get update && apt-get install -y --no-install-recommends msbuild nuget ca-certificates curl && rm -rf /var/lib/apt/lists/* || true
+RUN if ! command -v nuget.exe >/dev/null 2>&1 && ! command -v nuget >/dev/null 2>&1; then \
+      curl -fsSL "https://dist.nuget.org/win-x86-commandline/${NUGET_VERSION}/nuget.exe" -o /usr/local/bin/nuget.exe 2>/dev/null || \
+      curl -fsSL "https://aka.ms/nugetclidl" -o /usr/local/bin/nuget.exe 2>/dev/null || true; \
+    fi && \
+    chmod +x /usr/local/bin/nuget.exe 2>/dev/null || true
 
 WORKDIR /src
 ENV OUT_DIR=/out
